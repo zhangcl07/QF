@@ -4,7 +4,10 @@ var zQuery = (function(){
         zquery = {},
         emptyArray = [],
         slice = emptyArray.slice,
-        simpleSelectorRE = /^[\w-]*$/;
+        simpleSelectorRE = /^[\w-]*$/,
+        uniq,
+        isArray = Array.isArray ||
+            function(object){ return object instanceof Array };
     //function $(selector){
     //    var selectorType = 'querySelectorAll';
     //
@@ -18,7 +21,12 @@ var zQuery = (function(){
     function isDocument(obj){
         return obj != null && obj.nodeType == obj.DOCUMENT_NODE
     }
-
+    function isWindow(obj) { return obj != null && obj == obj.window }
+    function isObject(obj) { return type(obj) == "object" }
+    function isPlainObject(obj) {
+        return isObject(obj) && !isWindow(obj) && Object.getPrototypeOf(obj) == Object.prototype
+    }
+    function likeArray(obj) { return typeof obj.length == 'number' }
     //zquery.fragment = function(html, name, properties) {
     //    var dom, nodes, container
     //
@@ -82,7 +90,17 @@ var zQuery = (function(){
     $ = function(selector, context){
         return zquery.init(selector, context)
     };
-
+    function extend(target, source, deep) {
+        for (key in source)
+            if (deep && (isPlainObject(source[key]) || isArray(source[key]))) {
+                if (isPlainObject(source[key]) && !isPlainObject(target[key]))
+                    target[key] = {}
+                if (isArray(source[key]) && !isArray(target[key]))
+                    target[key] = []
+                extend(target[key], source[key], deep)
+            }
+            else if (source[key] !== undefined) target[key] = source[key]
+    }
     $.extend = function(target){
         var deep, args = slice.call(arguments, 1)
         if (typeof target == 'boolean') {
@@ -109,7 +127,35 @@ var zQuery = (function(){
                         element.querySelectorAll(selector) // Or it's not simple, and we need to query all
                 )
     };
+    $.trim = function(str) {
+        return str == null ? "" : String.prototype.trim.call(str)
+    };
+    $.each = function(elements, callback){
+        var i, key
+        if (likeArray(elements)) {
+            for (i = 0; i < elements.length; i++)
+                if (callback.call(elements[i], i, elements[i]) === false) return elements
+        } else {
+            for (key in elements)
+                if (callback.call(elements[key], key, elements[key]) === false) return elements
+        }
 
+        return elements
+    };
+    function deserializeValue(value) {
+        try {
+            return value ?
+            value == "true" ||
+            ( value == "false" ? false :
+                value == "null" ? null :
+                    +value + "" == value ? +value :
+                        /^[\[\{]/.test(value) ? $.parseJSON(value) :
+                            value )
+                : value
+        } catch(e) {
+            return value
+        }
+    }
     $.fn = {
         forEach: emptyArray.forEach,
         creatElem : function(elem){
@@ -231,37 +277,45 @@ var zQuery = (function(){
             return result
         }
     };
+    //zquery.Z.prototype = $.fn;
+    //
+    //// Export internal API functions in the `$.zepto` namespace
+    //zquery.uniq = uniq;
+    //zquery.deserializeValue = deserializeValue;
+    //$.zquery = zquery;
+
     return $;
 })();
 window.zQuery = zQuery;
 window.$ === undefined && (window.$ = zQuery);
 
 (function($){
-    console.log($.fn)
     var ajaxOptions = {
         type:"post",
         url:"",
-        dataType:"json",
-        success:null
+        data:null,
+        resType:"json",
+        callback:null
     }
-    $.fn.ajax = function (cfg) {
+    $.ajax = function (cfg) {
         var CFG = $.extend(ajaxOptions,cfg);
         var xhr = new XMLHttpRequest();
-        if (typeof CFG.opts === 'function') {
-            CFG.success = CFG.opts;
-            CFG.opts = null;
+        if (typeof CFG.data === 'function') {
+            CFG.callback = CFG.data;
+            CFG.data = null;
         }
-        xhr.open(CFG.type, CFG.url);
+        xhr.open(CFG.type, CFG.url,true);
         var fd = new FormData();
-        if (CFG.type === 'POST' && CFG.opts) {
-            for (var key in CFG.opts) {
-                fd.append(key, JSON.stringify(CFG.opts[key]));
+        if (CFG.type === 'POST' && CFG.data) {
+            for (var key in CFG.data){
+                fd.append(key, JSON.stringify(CFG.data[key]));
             }
         }
-        xhr.onload = function () {
-            callback(JSON.parse(xhr.response));
+        xhr.onload = function (e) {
+            //var res = xhr.response;//JSON.parse(xhr.response)
+            CFG.callback(xhr.response);
         };
-        xhr.send(CFG.opts ? fd : null);
+        xhr.send(CFG.data ? fd : null);
         return xhr;
     }
 })(zQuery);
@@ -281,10 +335,10 @@ window.checkNavigator = function () {
 //})();
 
 /*
-zQuery.fn.extend({
-    html:function(){}
-});
-*/
+ zQuery.fn.extend({
+ html:function(){}
+ });
+ */
 //function getLocation(url){
 //	var hash = url.hash,
 //		href = url.href;
