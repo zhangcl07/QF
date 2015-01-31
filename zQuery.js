@@ -27,43 +27,13 @@ var zQuery = (function(){
         return isObject(obj) && !isWindow(obj) && Object.getPrototypeOf(obj) == Object.prototype
     }
     function likeArray(obj) { return typeof obj.length == 'number' }
-    //zquery.fragment = function(html, name, properties) {
-    //    var dom, nodes, container
-    //
-    //    // A special case optimization for a single tag
-    //    if (singleTagRE.test(html)){
-    //        dom = $(document.createElement(RegExp.$1))
-    //    }
-    //
-    //    if (!dom) {
-    //        if (html.replace) html = html.replace(tagExpanderRE, "<$1></$2>")
-    //        if (name === undefined) name = fragmentRE.test(html) && RegExp.$1
-    //        if (!(name in containers)) name = '*'
-    //
-    //        container = containers[name]
-    //        container.innerHTML = '' + html
-    //        dom = $.each(slice.call(container.childNodes), function(){
-    //            container.removeChild(this)
-    //        })
-    //    }
-    //
-    //    if (isPlainObject(properties)) {
-    //        nodes = $(dom)
-    //        $.each(properties, function(key, value) {
-    //            if (methodAttributes.indexOf(key) > -1) nodes[key](value)
-    //            else nodes.attr(key, value)
-    //        })
-    //    }
-    //
-    //    return dom
-    //};
+
     zquery.Z = function(dom, selector) {
-        dom = dom || []
-        dom.__proto__ = $.fn
-        dom.selector = selector || ''
+        dom = dom || [];
+        dom.__proto__ = $.fn;
+        dom.selector = selector || '';
         return dom
     };
-
     zquery.init = function(selector, context) {
         var dom
         // If nothing given, return an empty zQuery collection
@@ -142,6 +112,9 @@ var zQuery = (function(){
 
         return elements
     };
+    $.createElem = function(elem){
+        return document.createElement(elem);
+    };
     function deserializeValue(value) {
         try {
             return value ?
@@ -158,9 +131,6 @@ var zQuery = (function(){
     }
     $.fn = {
         forEach: emptyArray.forEach,
-        creatElem : function(elem){
-            return document.createElement(elem);
-        },
         each : function(callback){
             for(var i = 0; i<this.length ;i++){
                 callback(this[i])
@@ -184,6 +154,9 @@ var zQuery = (function(){
         append : function(elem){
             return this.each(function(index){
                 index.insertAdjacentHTML('beforeend', elem);
+                //for(var i=0;i<elem.length;i++){
+                //    index.insertAdjacentHTML('beforeend', elem[i].isContentEditable);
+                //}
             });
         },
         appendTo:function(parent){
@@ -201,13 +174,27 @@ var zQuery = (function(){
             });
         },
         addClass : function(classname){
+            //var names = classname.split(" ");
             return this.each(function(index){
-                index.className += classname;
+                index.className +=(" "+classname);
+                //for(var i=0;i<names.length;i++){
+                //    index.classList.add(names[i]);
+                //};
             });
         },
         removeClass : function(classname){
             return this.each(function(index){
-                index.className.replace(/^classname/, '');
+                index.classList.remove(classname);
+            });
+        },
+        toggleClass:function(classname){
+            return this.each(function(index){
+                index.classList.toggle(classname);
+            });
+        },
+        hasClass:function(classname){
+            return this.each(function(index){
+                index.classList.contains(classname);
             });
         },
         attr : function(attr,val){
@@ -228,6 +215,7 @@ var zQuery = (function(){
         },
         html : function(html){
             return this.each(function(index){
+                console.log(index);
                 index.innerHTML = html;
             });
         },
@@ -275,6 +263,30 @@ var zQuery = (function(){
             else if (this.length == 1) result = $(zquery.qsa(this[0], selector))
             else result = this.map(function(){ return zquery.qsa(this, selector) })
             return result
+        },
+        on : function(event,handle){
+            return this.each(function(index){
+                index.on(event,handle);
+            });
+        },
+        getData : function(attr){
+            var val = [];
+            this.each(function(index){
+                val.push(index.dataset[attr]);
+            });
+            return val;
+        },
+        setData : function(attr,val){
+            return this.each(function(index){
+                index.dataset[attr] = val;
+            });
+        },
+        hasElement: function(child){
+            var blen;
+            this.each(function(index){
+                blen = index.contains(child[0]);
+            });
+            return blen;
         }
     };
     //zquery.Z.prototype = $.fn;
@@ -288,7 +300,7 @@ var zQuery = (function(){
 })();
 window.zQuery = zQuery;
 window.$ === undefined && (window.$ = zQuery);
-
+Element.prototype.on = Element.prototype.addEventListener;
 (function($){
     var ajaxOptions = {
         type:"post",
