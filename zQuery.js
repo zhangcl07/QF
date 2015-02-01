@@ -4,8 +4,8 @@ var zQuery = (function(){
         zquery = {},
         emptyArray = [],
         slice = emptyArray.slice,
-        simpleSelectorRE = /^[\w-]*$/,
-        uniq,
+        //simpleSelectorRE = /^[\w-]*$/,
+        //uniq,
         isArray = Array.isArray ||
             function(object){ return object instanceof Array };
     //function $(selector){
@@ -18,9 +18,9 @@ var zQuery = (function(){
     //    //console.log(typeof document[selectorType](selector));
     //    return document[selectorType](selector);
     //};
-    function isDocument(obj){
-        return obj != null && obj.nodeType == obj.DOCUMENT_NODE
-    }
+    //function isDocument(obj){
+    //    return obj != null && obj.nodeType == obj.DOCUMENT_NODE
+    //}
     function isWindow(obj) { return obj != null && obj == obj.window }
     function isObject(obj) { return type(obj) == "object" }
     function isPlainObject(obj) {
@@ -50,7 +50,8 @@ var zQuery = (function(){
             }
             // If it's a CSS selector, use it to select nodes.
             else {
-                dom = zquery.qsa(document, selector)
+                //dom = zquery.qsa(document, selector)
+                dom = document.querySelectorAll(selector);
             }
         }
         // create a new zQuery collection from the nodes found
@@ -81,25 +82,39 @@ var zQuery = (function(){
         return target
     };
 
-    zquery.qsa = function(element, selector){
-        var found,
-            maybeID = selector[0] == '#',
-            maybeClass = !maybeID && selector[0] == '.',
-            nameOnly = maybeID || maybeClass ? selector.slice(1) : selector, // Ensure that a 1 char tag name still gets checked
-            isSimple = simpleSelectorRE.test(nameOnly);
-        return (isDocument(element) && isSimple && maybeID) ?
-            ( (found = element.getElementById(nameOnly)) ? [found] : [] ) :
-            (element.nodeType !== 1 && element.nodeType !== 9) ? [] :
-                slice.call(
-                    isSimple && !maybeID ?
-                        maybeClass ? element.getElementsByClassName(nameOnly) : // If it's simple, it could be a class
-                            element.getElementsByTagName(selector) : // Or a tag
-                        element.querySelectorAll(selector) // Or it's not simple, and we need to query all
-                )
-    };
-    $.trim = function(str) {
-        return str == null ? "" : String.prototype.trim.call(str)
-    };
+    /**
+     * zquery.qsa已被querySelectorAll()代替
+     */
+    //zquery.qsa = function(element, selector){
+    //    var found,
+    //        maybeID = selector[0] == '#',
+    //        maybeClass = !maybeID && selector[0] == '.',
+    //        nameOnly = maybeID || maybeClass ? selector.slice(1) : selector, // Ensure that a 1 char tag name still gets checked
+    //        isSimple = simpleSelectorRE.test(nameOnly);
+    //    return (isDocument(element) && isSimple && maybeID) ?
+    //        ( (found = element.getElementById(nameOnly)) ? [found] : [] ) :
+    //        (element.nodeType !== 1 && element.nodeType !== 9) ? [] :
+    //            slice.call(
+    //                isSimple && !maybeID ?
+    //                    maybeClass ? element.getElementsByClassName(nameOnly) : // If it's simple, it could be a class
+    //                        element.getElementsByTagName(selector) : // Or a tag
+    //                    element.querySelectorAll(selector) // Or it's not simple, and we need to query all
+    //            )
+    //};
+    /**
+     * 去掉selector前后的空格
+     * @param str
+     * @returns {string}
+     */
+    //$.trim = function(str) {
+    //    return str == null ? "" : String.prototype.trim.call(str)
+    //};
+    /**
+     * each循环
+     * @param elements
+     * @param callback
+     * @returns {*}
+     */
     $.each = function(elements, callback){
         var i, key
         if (likeArray(elements)) {
@@ -109,26 +124,20 @@ var zQuery = (function(){
             for (key in elements)
                 if (callback.call(elements[key], key, elements[key]) === false) return elements
         }
-
         return elements
     };
+    /**
+     * createElement
+     * @param elem
+     * @returns {HTMLElement}
+     */
     $.createElem = function(elem){
         return document.createElement(elem);
     };
-    function deserializeValue(value) {
-        try {
-            return value ?
-            value == "true" ||
-            ( value == "false" ? false :
-                value == "null" ? null :
-                    +value + "" == value ? +value :
-                        /^[\[\{]/.test(value) ? $.parseJSON(value) :
-                            value )
-                : value
-        } catch(e) {
-            return value
-        }
-    }
+    /**
+     * zquery's prototype
+     * @type {{forEach: Function, each: Function, after: Function, before: Function, prepend: Function, append: Function, appendTo: Function, remove: Function, addClass: Function, removeClass: Function, toggleClass: Function, hasClass: Function, attr: Function, removeAttr: Function, html: Function, text: Function, css: Function, find: Function, on: Function, getData: Function, setData: Function, hasElement: Function}}
+     */
     $.fn = {
         forEach: emptyArray.forEach,
         each : function(callback){
@@ -136,108 +145,136 @@ var zQuery = (function(){
                 callback(this[i])
             }
         },
-        after : function(elem){
-            return this.each(function(index){
-                index.insertAdjacentHTML('afterend', elem);
+        after : function(html){
+            this.each(function(index){
+                index.insertAdjacentHTML('afterend', html);
             });
+            return this;
         },
-        before : function(elem){
-            return this.each(function(index){
-                index.insertAdjacentHTML('beforebegin', elem);
+        before : function(html){
+            this.each(function(index){
+                index.insertAdjacentHTML('beforebegin', html);
             });
+            return this;
         },
-        prepend : function(elem){
-            return this.each(function(index){
-                index.insertAdjacentHTML('afterbegin', elem);
+        prepend : function(html){
+            this.each(function(index){
+                index.insertAdjacentHTML('afterbegin', html);
             });
+            return this;
         },
-        append : function(elem){
-            return this.each(function(index){
-                index.insertAdjacentHTML('beforeend', elem);
+        append : function(html){
+            this.each(function(index){
+                index.insertAdjacentHTML('beforeend', html);
                 //for(var i=0;i<elem.length;i++){
                 //    index.insertAdjacentHTML('beforeend', elem[i].isContentEditable);
                 //}
             });
+            return this;
         },
-        appendTo:function(parent){
-            console.log(zquery.qsa(document, parent));
-            return zquery.qsa(document, parent).each(function(p){
-                console.log(p)
-                //this.each(function(index){
-                //    index.insertAdjacentHTML('beforeend', p);
-                //});
-            });
-        },
-        remove : function(elem){
-            return this.each(function(index){
-                index.parentNode.removeChild(window.$(elem));
+        //appendTo:function(parent){
+        //    var that = this;
+        //    //console.log(document.querySelectorAll(parent));
+        //    return parent.each(function(p){
+        //        that.each(function(index){
+        //            p.insertAdjacentHTML('beforeend', index.innerHTML);
+        //            index.remove();
+        //        });
+        //    });
+        //},
+        remove : function(){
+            this.each(function(index){
+                index.parentNode.removeChild(index);
             });
         },
         addClass : function(classname){
             //var names = classname.split(" ");
-            return this.each(function(index){
+            this.each(function(index){
                 index.className +=(" "+classname);
                 //for(var i=0;i<names.length;i++){
                 //    index.classList.add(names[i]);
                 //};
             });
+            return this;
         },
         removeClass : function(classname){
-            return this.each(function(index){
+            this.each(function(index){
                 index.classList.remove(classname);
             });
+            return this;
         },
         toggleClass:function(classname){
-            return this.each(function(index){
+            this.each(function(index){
                 index.classList.toggle(classname);
             });
+            return this;
         },
         hasClass:function(classname){
-            return this.each(function(index){
+            this.each(function(index){
                 index.classList.contains(classname);
             });
+            return this;
         },
         attr : function(attr,val){
-            if(!!val){
-                return this.each(function(index){
+            if(!!val && typeof attr !== "object"){
+                this.each(function(index){
                     index.setAttribute(attr,val);
                 });
+            }else if(typeof attr === "object" && typeof val === "undefined"){
+                this.each(function(index){
+                    for( v in attr){
+                        index.setAttribute(v,attr[v]);
+                    }
+                });
             }else{
-                return this.each(function(index){
+                this.each(function(index){
                     index.getAttribute(attr);
                 });
             }
+            return this;
         },
         removeAttr : function(attr){
-            return this.each(function(index){
+            this.each(function(index){
                 index.removeAttribute(attr);
             });
+            return this;
         },
         html : function(html){
-            return this.each(function(index){
-                console.log(index);
-                index.innerHTML = html;
-            });
+            if(typeof html !== "undefined"){
+                this.each(function(index){
+                    index.innerHTML = html;
+                });
+                return this;
+            }else{
+                var _html;
+                this.each(function(index){
+                    _html = index.innerHTML;
+                });
+                return _html;
+            }
+
         },
         text : function(text){
-            //console.log(this.each());
-            if(checkNavigator() !== "Firefox"){
+            var innerMethod = typeof (this[0].textContent === "string")?"textContent":"innerText";
+            if(typeof text === "string"){
                 this.each(function(index){
-                    index.innerText = text;
+                    index[innerMethod] = text;
                 });
-            }else{
+                return this
+            }else if(typeof text === "undefined"){
+                var _text;
                 this.each(function(index){
-                    index.innerText = text;
+                    _text = index[innerMethod];
                 });
+                return _text;
             }
-            return this;
         },
         css: function (attr,val) {
             if(typeof attr !== "object" && !!val){
                 this.each(function(index){
                     index.style[attr] = val;
                 });
-            }else if(typeof attr == "object" && typeof val == "undefined"){
+            }else if(typeof attr === "object" && typeof val === "undefined"){
                 var cssstyle = "";
                 for(v in attr){
                     cssstyle += v+":"+attr[v]+";";
@@ -245,29 +282,28 @@ var zQuery = (function(){
                 this.each(function(index){
                     index.style.cssText = cssstyle;
                 });
-            }else{
-                return;
             }
             return this;
         },
-        find: function(selector){
-            var result, $this = this
-            if (!selector) result = $()
-            else if (typeof selector == 'object')
-                result = $(selector).filter(function(){
-                    var node = this
-                    return emptyArray.some.call($this, function(parent){
-                        return $.contains(parent, node)
-                    })
-                })
-            else if (this.length == 1) result = $(zquery.qsa(this[0], selector))
-            else result = this.map(function(){ return zquery.qsa(this, selector) })
-            return result
-        },
+        //find: function(selector){
+        //    var result, $this = this;
+        //    if (!selector) result = $();
+        //    else if (typeof selector == 'object')
+        //        result = $(selector).filter(function(){
+        //            var node = this;
+        //            return emptyArray.some.call($this, function(parent){
+        //                return $.contains(parent, node)
+        //            })
+        //        });
+        //    else if (this.length == 1) result = $(zquery.qsa(this[0], selector));
+        //    else result = this.map(function(){ return zquery.qsa(this, selector) });
+        //    return result
+        //},
         on : function(event,handle){
-            return this.each(function(index){
+            this.each(function(index){
                 index.on(event,handle);
             });
+            return this;
         },
         getData : function(attr){
             var val = [];
@@ -277,9 +313,10 @@ var zQuery = (function(){
             return val;
         },
         setData : function(attr,val){
-            return this.each(function(index){
+            this.each(function(index){
                 index.dataset[attr] = val;
             });
+            return this
         },
         hasElement: function(child){
             var blen;
@@ -289,7 +326,7 @@ var zQuery = (function(){
             return blen;
         }
     };
-    //zquery.Z.prototype = $.fn;
+    zquery.Z.prototype = $.fn;
     //
     //// Export internal API functions in the `$.zepto` namespace
     //zquery.uniq = uniq;
@@ -300,15 +337,17 @@ var zQuery = (function(){
 })();
 window.zQuery = zQuery;
 window.$ === undefined && (window.$ = zQuery);
+//绑定on事件
 Element.prototype.on = Element.prototype.addEventListener;
-(function($){
+//ajax
+;(function($){
     var ajaxOptions = {
         type:"post",
         url:"",
         data:null,
         resType:"json",
         callback:null
-    }
+    };
     $.ajax = function (cfg) {
         var CFG = $.extend(ajaxOptions,cfg);
         var xhr = new XMLHttpRequest();
@@ -331,7 +370,56 @@ Element.prototype.on = Element.prototype.addEventListener;
         return xhr;
     }
 })(zQuery);
+/**
+ * 测试某功能模块耗时
+ */
+;(function($){
+    $.testEffi = function (callback) {
+        var startT = new Date().getTime();
+        callback();
+        var endT = new Date().getTime();
+        console.log(endT-startT);
+    }
+})(zQuery);
+//表单
+;(function($){
+    $.fn.serializeArray = function() {
+        var name, type, result = [],
+            add = function(value) {
+                if (value.forEach) return value.forEach(add)
+                result.push({ name: name, value: value })
+            }
+        if (this[0]) $.each(this[0].elements, function(_, field){
+            type = field.type, name = field.name
+            if (name && field.nodeName.toLowerCase() != 'fieldset' &&
+                !field.disabled && type != 'submit' && type != 'reset' && type != 'button' && type != 'file' &&
+                ((type != 'radio' && type != 'checkbox') || field.checked))
+                add(field.value)
+        })
+        return result
+    }
 
+    $.fn.serialize = function(){
+        var result = []
+        this.serializeArray().forEach(function(elm){
+            result.push(encodeURIComponent(elm.name) + '=' + encodeURIComponent(elm.value))
+        })
+        return result.join('&')
+    }
+
+    //$.fn.submit = function(callback) {
+    //    if (0 in arguments) this.bind('submit', callback)
+    //    else if (this.length) {
+    //        var event = $.Event('submit')
+    //        this.eq(0).trigger(event)
+    //        if (!event.isDefaultPrevented()) this.get(0).submit()
+    //    }
+    //    return this
+    //}
+
+})(zQuery);
+
+//判断浏览器
 window.checkNavigator = function () {
     if ((navigator.userAgent.indexOf('MSIE') >= 0) && (navigator.userAgent.indexOf('Opera') < 0)){
         return "IE";
@@ -343,18 +431,3 @@ window.checkNavigator = function () {
         return "Chrome";
     }
 };
-
-//})();
-
-/*
- zQuery.fn.extend({
- html:function(){}
- });
- */
-//function getLocation(url){
-//	var hash = url.hash,
-//		href = url.href;
-//	var index = href.indexOf(hash);
-//	var newUrl = href.substring(0,index);
-//	return newUrl;
-//}
