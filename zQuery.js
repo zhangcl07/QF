@@ -4,7 +4,9 @@ var zQuery = (function(){
         zquery = {},
         emptyArray = [],
         slice = emptyArray.slice,
-        //simpleSelectorRE = /^[\w-]*$/,
+        filter = emptyArray.filter,
+        simpleSelectorRE = /^[\w-]*$/,
+        fragmentRE = /^\s*<(\w+|!)[^>]*>/,
         //uniq,
         isArray = Array.isArray ||
             function(object){ return object instanceof Array };
@@ -27,6 +29,7 @@ var zQuery = (function(){
         return isObject(obj) && !isWindow(obj) && Object.getPrototypeOf(obj) == Object.prototype
     }
     function likeArray(obj) { return typeof obj.length == 'number' }
+    function isDocument(obj)   { return obj != null && obj.nodeType == obj.DOCUMENT_NODE }
 
     zquery.Z = function(dom, selector) {
         dom = dom || [];
@@ -35,24 +38,30 @@ var zQuery = (function(){
         return dom
     };
     zquery.init = function(selector, context) {
-        var dom
+        var dom;
         // If nothing given, return an empty zQuery collection
         if (!selector) return zquery.Z()
         // Optimize for string selectors
         else if (typeof selector == 'string') {
-            //console.log(context)
             selector = selector.trim();
-            //console.log(selector);
+            // is thrown if the fragment doesn't begin with <
+            if (selector[0] == '<' && fragmentRE.test(selector)){
+                dom = [selector];
+            }
             // If there's a context, create a collection on that context first, and select
             // nodes from there
-            if (context !== undefined) {
-                return $(context).find(selector)
+            else if (context !== undefined) {
+                return $(context+" "+selector)
             }
             // If it's a CSS selector, use it to select nodes.
             else {
                 //dom = zquery.qsa(document, selector)
                 dom = document.querySelectorAll(selector);
             }
+        }else if (typeof selector == 'object') {
+            dom = [selector];
+        }else{
+            console.log(typeof selector);
         }
         // create a new zQuery collection from the nodes found
         return zquery.Z(dom, selector)
@@ -83,7 +92,7 @@ var zQuery = (function(){
     };
 
     /**
-     * zquery.qsa已被querySelectorAll()代替
+     * zquery.qsa可被querySelectorAll()代替 但效率会有点影响
      */
     //zquery.qsa = function(element, selector){
     //    var found,
@@ -134,6 +143,31 @@ var zQuery = (function(){
     $.createElem = function(elem){
         return document.createElement(elem);
     };
+
+    $.map = function(elements, callback){
+        var value, values = [], i, key
+        if (likeArray(elements))
+            for (i = 0; i < elements.length; i++) {
+                value = callback(elements[i], i)
+                if (value != null) values.push(value)
+            }
+        else
+            for (key in elements) {
+                value = callback(elements[key], key)
+                if (value != null) values.push(value)
+            }
+        return flatten(values)
+    }
+
+    $.contains = document.documentElement.contains ?
+        function(parent, node) {
+            return parent !== node && parent.contains(node)
+        } :
+        function(parent, node) {
+            while (node && (node = node.parentNode))
+                if (node === parent) return true
+            return false
+        }
     /**
      * zquery's prototype
      * @type {{forEach: Function, each: Function, after: Function, before: Function, prepend: Function, append: Function, appendTo: Function, remove: Function, addClass: Function, removeClass: Function, toggleClass: Function, hasClass: Function, attr: Function, removeAttr: Function, html: Function, text: Function, css: Function, find: Function, on: Function, getData: Function, setData: Function, hasElement: Function}}
@@ -172,34 +206,39 @@ var zQuery = (function(){
             });
             return this;
         },
-        //appendTo:function(parent){
-        //    var that = this;
-        //    //console.log(document.querySelectorAll(parent));
-        //    return parent.each(function(p){
-        //        that.each(function(index){
-        //            p.insertAdjacentHTML('beforeend', index.innerHTML);
-        //            index.remove();
-        //        });
-        //    });
-        //},
+        appendTo:function(parent){
+            var that = this,
+                $parent = $(parent);
+            //console.log(document.querySelectorAll(parent));
+            $parent.each(function(p){
+                that.each(function(index){
+                    p.insertAdjacentHTML('beforeend', index);
+                    //index.remove();
+                });
+            });
+            return this;
+        },
         remove : function(){
             this.each(function(index){
                 index.parentNode.removeChild(index);
             });
         },
         addClass : function(classname){
-            //var names = classname.split(" ");
+            var names = classname.split(" ");
             this.each(function(index){
-                index.className +=(" "+classname);
-                //for(var i=0;i<names.length;i++){
-                //    index.classList.add(names[i]);
-                //};
+                //index.className +=(" "+classname);
+                for(var i=0;i<names.length;i++){
+                    index.classList.add(names[i]);
+                };
             });
             return this;
         },
         removeClass : function(classname){
+            var names = classname.split(" ");
             this.each(function(index){
-                index.classList.remove(classname);
+                for(var i=0;i<names.length;i++){
+                    index.classList.remove(names[i]);
+                };
             });
             return this;
         },
@@ -285,20 +324,6 @@ var zQuery = (function(){
             }
             return this;
         },
-        //find: function(selector){
-        //    var result, $this = this;
-        //    if (!selector) result = $();
-        //    else if (typeof selector == 'object')
-        //        result = $(selector).filter(function(){
-        //            var node = this;
-        //            return emptyArray.some.call($this, function(parent){
-        //                return $.contains(parent, node)
-        //            })
-        //        });
-        //    else if (this.length == 1) result = $(zquery.qsa(this[0], selector));
-        //    else result = this.map(function(){ return zquery.qsa(this, selector) });
-        //    return result
-        //},
         on : function(event,handle){
             this.each(function(index){
                 index.on(event,handle);
@@ -371,7 +396,7 @@ Element.prototype.on = Element.prototype.addEventListener;
     }
 })(zQuery);
 /**
- * 测试某功能模块耗时
+ * 测试某功能模块效率
  */
 ;(function($){
     $.testEffi = function (callback) {
