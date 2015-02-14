@@ -4,32 +4,21 @@ var zQuery = (function(){
         zquery = {},
         emptyArray = [],
         slice = emptyArray.slice,
-        filter = emptyArray.filter,
-        simpleSelectorRE = /^[\w-]*$/,
         fragmentRE = /^\s*<(\w+|!)[^>]*>/,
-        //uniq,
-        isArray = Array.isArray ||
-            function(object){ return object instanceof Array };
-    //function $(selector){
-    //    var selectorType = 'querySelectorAll';
-    //
-    //    if (selector.indexOf('#') === 0) {
-    //        selectorType = 'getElementById';
-    //        selector = selector.substr(1, selector.length);
-    //    }
-    //    //console.log(typeof document[selectorType](selector));
-    //    return document[selectorType](selector);
-    //};
-    //function isDocument(obj){
-    //    return obj != null && obj.nodeType == obj.DOCUMENT_NODE
-    //}
+        class2type = {},
+        toString = class2type.toString,
+        isArray = Array.isArray || function(object){ return object instanceof Array };
+
+    function type(obj) {
+        return obj == null ? String(obj) :
+        class2type[toString.call(obj)] || "object"
+    }
     function isWindow(obj) { return obj != null && obj == obj.window }
     function isObject(obj) { return type(obj) == "object" }
     function isPlainObject(obj) {
         return isObject(obj) && !isWindow(obj) && Object.getPrototypeOf(obj) == Object.prototype
     }
     function likeArray(obj) { return typeof obj.length == 'number' }
-    function isDocument(obj)   { return obj != null && obj.nodeType == obj.DOCUMENT_NODE }
 
     zquery.Z = function(dom, selector) {
         dom = dom || [];
@@ -40,7 +29,9 @@ var zQuery = (function(){
     zquery.init = function(selector, context) {
         var dom;
         // If nothing given, return an empty zQuery collection
-        if (!selector) return zquery.Z()
+        if (!selector){
+            return zquery.Z()
+        }
         // Optimize for string selectors
         else if (typeof selector == 'string') {
             selector = selector.trim();
@@ -55,8 +46,17 @@ var zQuery = (function(){
             }
             // If it's a CSS selector, use it to select nodes.
             else {
-                //dom = zquery.qsa(document, selector)
-                dom = document.querySelectorAll(selector);
+                //dom = zquery.qsa(document, selector);
+
+                var selectorType = 'querySelectorAll';
+                if (selector.indexOf('#') === 0 && selector.indexOf(' ') === -1 && selector.indexOf('>') === -1){
+                    selectorType = 'getElementById';
+                    selector = selector.substr(1, selector.length);
+                }else if(selector.indexOf('.') === 0 && selector.indexOf(' ') === -1 && selector.indexOf('>') === -1){
+                    selectorType = 'getElementByClassName';
+                    selector = selector.substr(1, selector.length);
+                }
+                dom = document[selectorType](selector);
             }
         }else if (typeof selector == 'object') {
             dom = [selector];
@@ -70,54 +70,41 @@ var zQuery = (function(){
     $ = function(selector, context){
         return zquery.init(selector, context)
     };
+
+    //extend
     function extend(target, source, deep) {
         for (key in source)
             if (deep && (isPlainObject(source[key]) || isArray(source[key]))) {
-                if (isPlainObject(source[key]) && !isPlainObject(target[key]))
+                if (isPlainObject(source[key]) && !isPlainObject(target[key])){
                     target[key] = {}
-                if (isArray(source[key]) && !isArray(target[key]))
+                }
+                if (isArray(source[key]) && !isArray(target[key])){
                     target[key] = []
+                }
                 extend(target[key], source[key], deep)
             }
-            else if (source[key] !== undefined) target[key] = source[key]
+            else if (source[key] !== undefined){
+                target[key] = source[key]
+            }
     }
     $.extend = function(target){
-        var deep, args = slice.call(arguments, 1)
+        var deep, args = slice.call(arguments, 1);
         if (typeof target == 'boolean') {
-            deep = target
+            deep = target;
             target = args.shift()
         }
-        args.forEach(function(arg){ extend(target, arg, deep) })
+        args.forEach(function(arg){ extend(target, arg, deep) });
         return target
     };
 
-    /**
-     * zquery.qsa可被querySelectorAll()代替 但效率会有点影响
-     */
-    //zquery.qsa = function(element, selector){
-    //    var found,
-    //        maybeID = selector[0] == '#',
-    //        maybeClass = !maybeID && selector[0] == '.',
-    //        nameOnly = maybeID || maybeClass ? selector.slice(1) : selector, // Ensure that a 1 char tag name still gets checked
-    //        isSimple = simpleSelectorRE.test(nameOnly);
-    //    return (isDocument(element) && isSimple && maybeID) ?
-    //        ( (found = element.getElementById(nameOnly)) ? [found] : [] ) :
-    //        (element.nodeType !== 1 && element.nodeType !== 9) ? [] :
-    //            slice.call(
-    //                isSimple && !maybeID ?
-    //                    maybeClass ? element.getElementsByClassName(nameOnly) : // If it's simple, it could be a class
-    //                        element.getElementsByTagName(selector) : // Or a tag
-    //                    element.querySelectorAll(selector) // Or it's not simple, and we need to query all
-    //            )
-    //};
     /**
      * 去掉selector前后的空格
      * @param str
      * @returns {string}
      */
-    //$.trim = function(str) {
-    //    return str == null ? "" : String.prototype.trim.call(str)
-    //};
+    $.trim = function(str) {
+        return str == null ? "" : String.prototype.trim.call(str)
+    };
     /**
      * each循环
      * @param elements
@@ -125,49 +112,19 @@ var zQuery = (function(){
      * @returns {*}
      */
     $.each = function(elements, callback){
-        var i, key
+        var i, key;
         if (likeArray(elements)) {
-            for (i = 0; i < elements.length; i++)
+            for (i = 0; i < elements.length; i++){
                 if (callback.call(elements[i], i, elements[i]) === false) return elements
+            }
         } else {
-            for (key in elements)
+            for (key in elements){
                 if (callback.call(elements[key], key, elements[key]) === false) return elements
+            }
         }
         return elements
     };
-    /**
-     * createElement
-     * @param elem
-     * @returns {HTMLElement}
-     */
-    $.createElem = function(elem){
-        return document.createElement(elem);
-    };
 
-    $.map = function(elements, callback){
-        var value, values = [], i, key
-        if (likeArray(elements))
-            for (i = 0; i < elements.length; i++) {
-                value = callback(elements[i], i)
-                if (value != null) values.push(value)
-            }
-        else
-            for (key in elements) {
-                value = callback(elements[key], key)
-                if (value != null) values.push(value)
-            }
-        return flatten(values)
-    }
-
-    $.contains = document.documentElement.contains ?
-        function(parent, node) {
-            return parent !== node && parent.contains(node)
-        } :
-        function(parent, node) {
-            while (node && (node = node.parentNode))
-                if (node === parent) return true
-            return false
-        }
     /**
      * zquery's prototype
      * @type {{forEach: Function, each: Function, after: Function, before: Function, prepend: Function, append: Function, appendTo: Function, remove: Function, addClass: Function, removeClass: Function, toggleClass: Function, hasClass: Function, attr: Function, removeAttr: Function, html: Function, text: Function, css: Function, find: Function, on: Function, getData: Function, setData: Function, hasElement: Function}}
@@ -200,16 +157,12 @@ var zQuery = (function(){
         append : function(html){
             this.each(function(index){
                 index.insertAdjacentHTML('beforeend', html);
-                //for(var i=0;i<elem.length;i++){
-                //    index.insertAdjacentHTML('beforeend', elem[i].isContentEditable);
-                //}
             });
             return this;
         },
         appendTo:function(parent){
             var that = this,
                 $parent = $(parent);
-            //console.log(document.querySelectorAll(parent));
             $parent.each(function(p){
                 that.each(function(index){
                     p.insertAdjacentHTML('beforeend', index);
@@ -343,12 +296,11 @@ var zQuery = (function(){
             });
             return this
         },
-        hasElement: function(child){
-            var blen;
-            this.each(function(index){
-                blen = index.contains(child[0]);
-            });
-            return blen;
+        parent: function(){
+            return $(this.parentNode);
+        },
+        next: function(){
+            return $(this.nextSibling);
         }
     };
     zquery.Z.prototype = $.fn;
@@ -362,8 +314,21 @@ var zQuery = (function(){
 })();
 window.zQuery = zQuery;
 window.$ === undefined && (window.$ = zQuery);
-//绑定on事件
+//绑定事件
 Element.prototype.on = Element.prototype.addEventListener;
+Element.prototype.off = Element.prototype.removeEventListener;
+NodeList.prototype.on = function (event, fn) {
+    []['forEach'].call(this, function (el) {
+        el.on(event, fn);
+    });
+    return this;
+};
+NodeList.prototype.trigger = function (event) {
+    []['forEach'].call(this, function (el) {
+        el['trigger'](event);
+    });
+    return this;
+};
 //ajax
 ;(function($){
     var ajaxOptions = {
@@ -376,7 +341,7 @@ Element.prototype.on = Element.prototype.addEventListener;
     $.ajax = function (cfg) {
         var CFG = $.extend(ajaxOptions,cfg);
         var xhr = new XMLHttpRequest();
-        if (typeof CFG.data === 'function') {
+        if (typeof CFG.data === 'function'){
             CFG.callback = CFG.data;
             CFG.data = null;
         }
@@ -411,26 +376,31 @@ Element.prototype.on = Element.prototype.addEventListener;
     $.fn.serializeArray = function() {
         var name, type, result = [],
             add = function(value) {
-                if (value.forEach) return value.forEach(add)
+                if (value.forEach){
+                    return value.forEach(add)
+                }
                 result.push({ name: name, value: value })
-            }
-        if (this[0]) $.each(this[0].elements, function(_, field){
-            type = field.type, name = field.name
-            if (name && field.nodeName.toLowerCase() != 'fieldset' &&
-                !field.disabled && type != 'submit' && type != 'reset' && type != 'button' && type != 'file' &&
-                ((type != 'radio' && type != 'checkbox') || field.checked))
-                add(field.value)
-        })
+            };
+        if (this[0]){
+            $.each(this[0].elements, function(_, field){
+                type = field.type, name = field.name;
+                if (name && field.nodeName.toLowerCase() != 'fieldset' &&
+                    !field.disabled && type != 'submit' && type != 'reset' && type != 'button' && type != 'file' &&
+                    ((type != 'radio' && type != 'checkbox') || field.checked)){
+                    add(field.value)
+                }
+            })
+        }
         return result
-    }
+    };
 
     $.fn.serialize = function(){
-        var result = []
+        var result = [];
         this.serializeArray().forEach(function(elm){
             result.push(encodeURIComponent(elm.name) + '=' + encodeURIComponent(elm.value))
-        })
+        });
         return result.join('&')
-    }
+    };
 
     //$.fn.submit = function(callback) {
     //    if (0 in arguments) this.bind('submit', callback)
@@ -438,7 +408,7 @@ Element.prototype.on = Element.prototype.addEventListener;
     //        var event = $.Event('submit')
     //        this.eq(0).trigger(event)
     //        if (!event.isDefaultPrevented()) this.get(0).submit()
-    //    }
+    //    }0000
     //    return this
     //}
 
