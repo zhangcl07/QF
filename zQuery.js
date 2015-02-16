@@ -47,16 +47,18 @@ var zQuery = (function(){
             // If it's a CSS selector, use it to select nodes.
             else {
                 //dom = zquery.qsa(document, selector);
-
                 var selectorType = 'querySelectorAll';
-                if (selector.indexOf('#') === 0 && selector.indexOf(' ') === -1 && selector.indexOf('>') === -1){
-                    selectorType = 'getElementById';
-                    selector = selector.substr(1, selector.length);
-                }else if(selector.indexOf('.') === 0 && selector.indexOf(' ') === -1 && selector.indexOf('>') === -1){
-                    selectorType = 'getElementByClassName';
-                    selector = selector.substr(1, selector.length);
+                if(selector.indexOf(' ') === -1 && selector.indexOf('>') === -1){
+                    if (selector.indexOf('#') === 0){
+                        selectorType = 'getElementById';
+                        selector = selector.substr(1, selector.length);
+                    }else if(selector.indexOf('.') === 0){
+                        selectorType = 'getElementsByClassName';
+                        selector = selector.substr(1, selector.length);
+                    }
+                    dom = document[selectorType](selector);
                 }
-                dom = document[selectorType](selector);
+                dom = dom.length?dom:[dom];
             }
         }else if (typeof selector == 'object') {
             dom = [selector];
@@ -163,6 +165,7 @@ var zQuery = (function(){
         appendTo:function(parent){
             var that = this,
                 $parent = $(parent);
+            console.log($("body"))
             $parent.each(function(p){
                 that.each(function(index){
                     p.insertAdjacentHTML('beforeend', index);
@@ -336,7 +339,8 @@ NodeList.prototype.trigger = function (event) {
         url:"",
         data:null,
         resType:"json",
-        callback:null
+        success:function(result){},
+        error:function(result){}
     };
     $.ajax = function (cfg) {
         var CFG = $.extend(ajaxOptions,cfg);
@@ -354,25 +358,42 @@ NodeList.prototype.trigger = function (event) {
         }
         xhr.onload = function (e) {
             //var res = xhr.response;//JSON.parse(xhr.response)
-            CFG.callback(xhr.response);
+            if (xhr.status == 200) {
+                CFG.success(xhr.response);
+            } else {
+                CFG.error(xhr.response);
+            }
         };
         xhr.send(CFG.data ? fd : null);
         return xhr;
     }
 })(zQuery);
-/**
- * 测试某功能模块效率
- */
-;(function($){
+
+(function($){
+    /**
+     * 测试某功能模块效率
+     */
     $.testEffi = function (callback) {
         var startT = new Date().getTime();
         callback();
         var endT = new Date().getTime();
         console.log(endT-startT);
     }
+    //判断浏览器
+    $.checkNavigator = function () {
+        if ((navigator.userAgent.indexOf('MSIE') >= 0) && (navigator.userAgent.indexOf('Opera') < 0)){
+            return "IE";
+        }else if (navigator.userAgent.indexOf('Firefox') >= 0){
+            return "Firefox";
+        }else if (navigator.userAgent.indexOf('Opera') >= 0){
+            return "Opera";
+        }else if(navigator.userAgent.indexOf('Chrome') >= 0){
+            return "Chrome";
+        }
+    };
 })(zQuery);
 //表单
-;(function($){
+(function($){
     $.fn.serializeArray = function() {
         var name, type, result = [],
             add = function(value) {
@@ -414,15 +435,3 @@ NodeList.prototype.trigger = function (event) {
 
 })(zQuery);
 
-//判断浏览器
-window.checkNavigator = function () {
-    if ((navigator.userAgent.indexOf('MSIE') >= 0) && (navigator.userAgent.indexOf('Opera') < 0)){
-        return "IE";
-    }else if (navigator.userAgent.indexOf('Firefox') >= 0){
-        return "Firefox";
-    }else if (navigator.userAgent.indexOf('Opera') >= 0){
-        return "Opera";
-    }else if(navigator.userAgent.indexOf('Chrome') >= 0){
-        return "Chrome";
-    }
-};
