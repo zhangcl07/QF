@@ -1,10 +1,11 @@
 //;(function(){
-var zQuery = (function(){
+var DOOM = (function(){
     var $,
-        zquery = {},
+        doom = {},
         emptyArray = [],
         slice = emptyArray.slice,
         fragmentRE = /^\s*<(\w+|!)[^>]*>/,
+        simpleSelectorRE = /^[\w-]*$/,
         class2type = {},
         toString = class2type.toString,
         isArray = Array.isArray || function(object){ return object instanceof Array };
@@ -14,23 +15,26 @@ var zQuery = (function(){
         class2type[toString.call(obj)] || "object"
     }
     function isWindow(obj) { return obj != null && obj == obj.window }
+    function isDocument(obj)   { return obj != null && obj.nodeType == obj.DOCUMENT_NODE }
     function isObject(obj) { return type(obj) == "object" }
     function isPlainObject(obj) {
         return isObject(obj) && !isWindow(obj) && Object.getPrototypeOf(obj) == Object.prototype
     }
     function likeArray(obj) { return typeof obj.length == 'number' }
 
-    zquery.Z = function(dom, selector) {
-        dom = dom || [];
+    doom.Z = function(dom, selector) {
+        //dom = nodeListToArr(dom) || [];
+        //var len = dom.length;
         dom.__proto__ = $.fn;
         dom.selector = selector || '';
+        //dom.length = len;
         return dom
     };
-    zquery.init = function(selector, context) {
+    doom.init = function(selector){
         var dom;
-        // If nothing given, return an empty zQuery collection
+        // If nothing given, return an empty DOOM collection
         if (!selector){
-            return zquery.Z()
+            return doom.Z()
         }
         // Optimize for string selectors
         else if (typeof selector == 'string') {
@@ -38,43 +42,69 @@ var zQuery = (function(){
             // is thrown if the fragment doesn't begin with <
             if (selector[0] == '<' && fragmentRE.test(selector)){
                 dom = [selector];
+            }else {
+                //dom = doom.qsa(document, selector);
+                //var selectorType = 'querySelectorAll';
+                //if(selector.indexOf(' ') === -1 && selector.indexOf('>') === -1){
+                //    if (selector.indexOf('#') === 0){
+                //        selectorType = 'getElementById';
+                //        //selector = selector.substr(1, selector.length);
+                //    }else if(selector.indexOf('.') === 0){
+                //        selectorType = 'getElementsByClassName';
+                //        //selector = selector.substr(1, selector.length);
+                //    }else if(simpleSelectorRE.test(selector)){
+					//	selectorType = 'getElementsByTagName';
+					//}
+                //}
+                //console.log(selectorType+" "+selector);
+                //dom = document[selectorType](selector);
+                dom = doom.qsa(document,selector);
+                //dom = dom.length?dom:[];
+                //if(!dom[0]) dom = [dom];
             }
-            // If there's a context, create a collection on that context first, and select
-            // nodes from there
-            else if (context !== undefined) {
-                return $(context+" "+selector)
-            }
-            // If it's a CSS selector, use it to select nodes.
-            else {
-                //dom = zquery.qsa(document, selector);
-                var selectorType = 'querySelectorAll';
-                if(selector.indexOf(' ') === -1 && selector.indexOf('>') === -1){
-                    if (selector.indexOf('#') === 0){
-                        selectorType = 'getElementById';
-                        selector = selector.substr(1, selector.length);
-                    }else if(selector.indexOf('.') === 0){
-                        selectorType = 'getElementsByClassName';
-                        selector = selector.substr(1, selector.length);
-                    }
-                    dom = document[selectorType](selector);
-                }
-                dom = dom.length?dom:[dom];
-            }
-        }else if (typeof selector == 'object') {
+        }else if (typeof selector == 'object'){
             dom = [selector];
         }else{
             console.log(typeof selector);
         }
-        // create a new zQuery collection from the nodes found
-        return zquery.Z(dom, selector)
+        // create a new DOOM collection from the nodes found
+        return doom.Z(dom, selector)
     };
 
-    $ = function(selector, context){
-        return zquery.init(selector, context)
+    $ = function(selector){
+        return doom.init(selector)
     };
+
+    doom.qsa = function(element, selector){
+        var found,
+            maybeID = selector[0] == '#',
+            maybeClass = !maybeID && selector[0] == '.',
+            nameOnly = maybeID || maybeClass ? selector.slice(1) : selector, // Ensure that a 1 char tag name still gets checked
+            isSimple = simpleSelectorRE.test(nameOnly)
+        return (isDocument(element) && isSimple && maybeID) ?
+            ( (found = element.getElementById(nameOnly)) ? [found] : [] ) :
+            (element.nodeType !== 1 && element.nodeType !== 9) ? [] :
+                slice.call(
+                    isSimple && !maybeID ?
+                        maybeClass ? element.getElementsByClassName(nameOnly) : // If it's simple, it could be a class
+                            element.getElementsByTagName(selector) : // Or a tag
+                        element.querySelectorAll(selector) // Or it's not simple, and we need to query all
+                )
+    };
+
+    //nodeList to Array
+    function nodeListToArr(anchors){
+        var arr = new Array();
+        for (var i = 0; i < anchors.length; i++) {
+            var ele = anchors[i];
+            arr.push(ele);
+        }
+        return arr
+    }
 
     //extend
     function extend(target, source, deep) {
+        var key;
         for (key in source)
             if (deep && (isPlainObject(source[key]) || isArray(source[key]))) {
                 if (isPlainObject(source[key]) && !isPlainObject(target[key])){
@@ -104,9 +134,9 @@ var zQuery = (function(){
      * @param str
      * @returns {string}
      */
-    $.trim = function(str) {
-        return str == null ? "" : String.prototype.trim.call(str)
-    };
+    //$.trim = function(str) {
+    //    return str == null ? "" : String.prototype.trim.call(str)
+    //};
     /**
      * each循环
      * @param elements
@@ -128,7 +158,7 @@ var zQuery = (function(){
     };
 
     /**
-     * zquery's prototype
+     * doom's prototype
      * @type {{forEach: Function, each: Function, after: Function, before: Function, prepend: Function, append: Function, appendTo: Function, remove: Function, addClass: Function, removeClass: Function, toggleClass: Function, hasClass: Function, attr: Function, removeAttr: Function, html: Function, text: Function, css: Function, find: Function, on: Function, getData: Function, setData: Function, hasElement: Function}}
      */
     $.fn = {
@@ -139,184 +169,201 @@ var zQuery = (function(){
             }
         },
         after : function(html){
-            this.each(function(index){
-                index.insertAdjacentHTML('afterend', html);
+            this.each(function(elem){
+                elem.insertAdjacentHTML('afterend', html);
             });
             return this;
         },
         before : function(html){
-            this.each(function(index){
-                index.insertAdjacentHTML('beforebegin', html);
+            this.each(function(elem){
+                elem.insertAdjacentHTML('beforebegin', html);
             });
             return this;
         },
         prepend : function(html){
-            this.each(function(index){
-                index.insertAdjacentHTML('afterbegin', html);
+            this.each(function(elem){
+                elem.insertAdjacentHTML('afterbegin', html);
             });
             return this;
         },
         append : function(html){
-            this.each(function(index){
-                index.insertAdjacentHTML('beforeend', html);
+            console.log(this);
+            this.each(function(elem){
+                elem.insertAdjacentHTML('beforeend', html);
             });
             return this;
         },
         appendTo:function(parent){
             var that = this,
                 $parent = $(parent);
-            console.log($("body"))
+            //console.log($("body"))
             $parent.each(function(p){
-                that.each(function(index){
-                    p.insertAdjacentHTML('beforeend', index);
+                that.each(function(elem){
+                    p.insertAdjacentHTML('beforeend', elem);
                     //index.remove();
                 });
             });
             return this;
         },
         remove : function(){
-            this.each(function(index){
-                index.parentNode.removeChild(index);
+            this.each(function(elem){
+                elem.parentNode.removeChild(elem);
             });
         },
         addClass : function(classname){
+            console.log(this);
             var names = classname.split(" ");
-            this.each(function(index){
+            this.each(function(elem){
                 //index.className +=(" "+classname);
                 for(var i=0;i<names.length;i++){
-                    index.classList.add(names[i]);
-                };
+                    elem.classList.add(names[i]);
+                }
             });
             return this;
         },
         removeClass : function(classname){
             var names = classname.split(" ");
-            this.each(function(index){
+            this.each(function(elem){
                 for(var i=0;i<names.length;i++){
-                    index.classList.remove(names[i]);
-                };
+                    elem.classList.remove(names[i]);
+                }
             });
             return this;
         },
         toggleClass:function(classname){
-            this.each(function(index){
-                index.classList.toggle(classname);
+            this.each(function(elem){
+                elem.classList.toggle(classname);
             });
             return this;
         },
         hasClass:function(classname){
-            this.each(function(index){
-                index.classList.contains(classname);
+            this.each(function(elem){
+                elem.classList.contains(classname);
             });
             return this;
         },
         attr : function(attr,val){
             if(!!val && typeof attr !== "object"){
-                this.each(function(index){
-                    index.setAttribute(attr,val);
+                this.each(function(elem){
+                    elem.setAttribute(attr,val);
                 });
             }else if(typeof attr === "object" && typeof val === "undefined"){
-                this.each(function(index){
-                    for( v in attr){
-                        index.setAttribute(v,attr[v]);
+                this.each(function(elem){
+                    for( var v in attr){
+                        elem.setAttribute(v,attr[v]);
                     }
                 });
             }else{
-                this.each(function(index){
-                    index.getAttribute(attr);
+                this.each(function(elem){
+                    elem.getAttribute(attr);
                 });
             }
             return this;
         },
         removeAttr : function(attr){
-            this.each(function(index){
-                index.removeAttribute(attr);
+            this.each(function(elem){
+                elem.removeAttribute(attr);
             });
             return this;
         },
         html : function(html){
             if(typeof html !== "undefined"){
-                this.each(function(index){
-                    index.innerHTML = html;
+                this.each(function(elem){
+                    elem.innerHTML = html;
                 });
                 return this;
             }else{
-                var _html;
-                this.each(function(index){
-                    _html = index.innerHTML;
-                });
-                return _html;
+                return this[0].innerHTML;
             }
-
         },
         text : function(text){
             var innerMethod = typeof (this[0].textContent === "string")?"textContent":"innerText";
             if(typeof text === "string"){
-                this.each(function(index){
-                    index[innerMethod] = text;
+                this.each(function(elem){
+                    elem[innerMethod] = text;
                 });
                 return this
             }else if(typeof text === "undefined"){
                 var _text;
-                this.each(function(index){
-                    _text = index[innerMethod];
+                this.each(function(elem){
+                    _text = elem[innerMethod];
                 });
                 return _text;
             }
         },
         css: function (attr,val) {
             if(typeof attr !== "object" && !!val){
-                this.each(function(index){
-                    index.style[attr] = val;
+                this.each(function(elem){
+                    elem.style[attr] = val;
                 });
             }else if(typeof attr === "object" && typeof val === "undefined"){
                 var cssstyle = "";
-                for(v in attr){
+                for(var v in attr){
                     cssstyle += v+":"+attr[v]+";";
                 }
-                this.each(function(index){
-                    index.style.cssText = cssstyle;
+                this.each(function(elem){
+                    elem.style.cssText = cssstyle;
                 });
             }
             return this;
         },
         on : function(event,handle){
-            this.each(function(index){
-                index.on(event,handle);
+            this.each(function(elem){
+                elem.on(event,handle);
             });
             return this;
         },
         getData : function(attr){
             var val = [];
-            this.each(function(index){
-                val.push(index.dataset[attr]);
+            this.each(function(elem){
+                val.push(elem.dataset[attr]);
             });
             return val;
         },
         setData : function(attr,val){
-            this.each(function(index){
-                index.dataset[attr] = val;
+            this.each(function(elem){
+                elem.dataset[attr] = val;
             });
             return this
         },
         parent: function(){
-            return $(this.parentNode);
+            return $(this[0].parentNode);
+        },
+        children: function(el){
+            var nodes = [],
+                elements = nodeListToArr(this[0].childNodes);
+            if(!!el){
+                $.each(elements,function(i){
+                    if (elements[i].nodeType == 1 && elements[i].tagName) nodes.push(elements[i])
+                });
+            }else{
+                $.each(elements,function(i){
+                    if (elements[i].nodeType == 1) nodes.push(elements[i])
+                });
+            }
+            return doom.Z(nodes)
         },
         next: function(){
-            return $(this.nextSibling);
+            return $(this[0].nextSibling);
+        },
+		height: function(){
+			return this[0].clientHeight
+		},
+		width: function(){
+			return this[0].clientWidth
         }
     };
-    zquery.Z.prototype = $.fn;
+    doom.Z.prototype = $.fn;
     //
     //// Export internal API functions in the `$.zepto` namespace
-    //zquery.uniq = uniq;
-    //zquery.deserializeValue = deserializeValue;
-    //$.zquery = zquery;
+    //doom.uniq = uniq;
+    //doom.deserializeValue = deserializeValue;
+    //$.doom = doom;
 
     return $;
 })();
-window.zQuery = zQuery;
-window.$ === undefined && (window.$ = zQuery);
+window.DOOM = DOOM;
+window.$ === undefined && (window.$ = DOOM);
 //绑定事件
 Element.prototype.on = Element.prototype.addEventListener;
 Element.prototype.off = Element.prototype.removeEventListener;
@@ -332,8 +379,18 @@ NodeList.prototype.trigger = function (event) {
     });
     return this;
 };
+var winSize = function(){
+	var e = window,
+		a = 'inner';
+	if (!('innerWidth' in window )){
+		a = 'client';
+		e = document.documentElement || document.body;
+	}
+	return { width : e[ a+'Width' ] , height : e[ a+'Height' ] };
+};
+
 //ajax
-;(function($){
+(function($){
     var ajaxOptions = {
         type:"post",
         url:"",
@@ -367,7 +424,7 @@ NodeList.prototype.trigger = function (event) {
         xhr.send(CFG.data ? fd : null);
         return xhr;
     }
-})(zQuery);
+})(DOOM);
 
 (function($){
     /**
@@ -391,7 +448,8 @@ NodeList.prototype.trigger = function (event) {
             return "Chrome";
         }
     };
-})(zQuery);
+})(DOOM);
+
 //表单
 (function($){
     $.fn.serializeArray = function() {
@@ -423,15 +481,5 @@ NodeList.prototype.trigger = function (event) {
         return result.join('&')
     };
 
-    //$.fn.submit = function(callback) {
-    //    if (0 in arguments) this.bind('submit', callback)
-    //    else if (this.length) {
-    //        var event = $.Event('submit')
-    //        this.eq(0).trigger(event)
-    //        if (!event.isDefaultPrevented()) this.get(0).submit()
-    //    }0000
-    //    return this
-    //}
-
-})(zQuery);
+})(DOOM);
 
